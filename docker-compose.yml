@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  # ── Backend (NestJS on port 3000)  // command - docker compose up -d─────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+    healthcheck:
+      test: [ "CMD", "node", "-e", "fetch('http://localhost:3000/api/movies').then(()=>process.exit(0)).catch(()=>process.exit(1))" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Frontend (Vite preview on port 5173) ──────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
