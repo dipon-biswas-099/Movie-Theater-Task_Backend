@@ -1,27 +1,29 @@
 # ── Build stage ───────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install dependencies
+# Copy manifests first (layer-cache friendly)
 COPY package.json package-lock.json* ./
-RUN npm ci
 
-# Copy source & compile TypeScript
+# Use npm install instead of npm ci — handles pre-release deps like TS 6.x
+RUN npm install --legacy-peer-deps
+
+# Copy source and compile
 COPY . .
-RUN npm run build
+RUN node_modules/.bin/nest build
 
 # ── Runtime stage ─────────────────────────────────────────────
-FROM node:22-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Only production dependencies
+# Production dependencies only
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --legacy-peer-deps
 
-# Copy compiled output
+# Copy compiled output from builder
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
